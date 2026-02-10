@@ -1,77 +1,83 @@
-// List of curse words and inappropriate language to detect
-// Add or remove words as needed (keeping it family-friendly in the code)
+// Load the profanity list package
+const profanityListEn = require('@dsojevic/profanity-list/en.json');
 
-const curseWords = [
-  // Common curse words
-  'fuck',
-  'shit',
-  'damn',
-  'ass',
-  'bitch',
-  'bastard',
-  'crap',
-  'hell',
-  'piss',
-  
-  // Slurs and hateful terms (abbreviated/censored in code)
-  'fck',
-  'sht',
-  'btch',
-  
-  // Variations and common misspellings people use to bypass filters
-  'f*ck',
-  'sh*t',
-  'b*tch',
-  'a$$',
-  'd@mn',
-  'fuk',
-  'fuc',
-  'shiz',
-  'azz',
-  
-  // Add more as needed
+// Extract all match patterns from the profanity list
+const profanityWords = profanityListEn.flatMap(item => {
+  // Split on | for multiple match patterns
+  return item.match.split('|').map(word => word.trim());
+});
+
+// ============================================================
+// CUSTOM CURSE WORDS - Add your own words here!
+// These are checked IN ADDITION to the profanity-list package
+// ============================================================
+const customCurseWords = [
+  // Add any custom words the main list might miss
+  // Examples:
+  // 'customword',
+  // 'anotherword',
 ];
 
-// Function to check if a message contains curse words
-function containsCurseWord(message) {
+// Function to check a word list against a message
+function checkWordList(message, wordList) {
   const lowerMessage = message.toLowerCase();
-  
-  // Remove special characters and check
   const cleanedMessage = lowerMessage.replace(/[^a-z0-9\s]/g, '');
   
-  for (const word of curseWords) {
-    const cleanedWord = word.toLowerCase().replace(/[^a-z0-9]/g, '');
+  for (const word of wordList) {
+    // Skip empty words
+    if (!word || word.length === 0) continue;
     
-    // Check both original and cleaned versions
-    if (lowerMessage.includes(word.toLowerCase()) || 
-        cleanedMessage.includes(cleanedWord)) {
-      return true;
+    const cleanedWord = word.toLowerCase().replace(/[^a-z0-9*]/g, '');
+    
+    // Handle wildcard patterns (e.g., "lo*ng" matches "loooong")
+    if (cleanedWord.includes('*')) {
+      const regexPattern = cleanedWord.replace(/\*/g, '+');
+      try {
+        const regex = new RegExp(regexPattern, 'i');
+        if (regex.test(cleanedMessage)) {
+          return { found: true, word };
+        }
+      } catch (e) {
+        // Invalid regex, skip
+      }
+    } else {
+      // Check both original and cleaned versions
+      if (lowerMessage.includes(word.toLowerCase()) || 
+          cleanedMessage.includes(cleanedWord)) {
+        return { found: true, word };
+      }
     }
   }
   
-  return false;
+  return { found: false, word: null };
 }
 
-// Function to get which curse words were found (for logging)
-function findCurseWords(message) {
-  const found = [];
-  const lowerMessage = message.toLowerCase();
-  const cleanedMessage = lowerMessage.replace(/[^a-z0-9\s]/g, '');
+/**
+ * Main profanity check function
+ * @param {string} message - The message to check
+ * @param {boolean} useProfanityList - Whether to use the @dsojevic/profanity-list
+ * @returns {{ hasProfanity: boolean, source: string, word: string|null }}
+ */
+function checkProfanity(message, useProfanityList = true) {
+  // Always check custom words first
+  const customCheck = checkWordList(message, customCurseWords);
+  if (customCheck.found) {
+    return { hasProfanity: true, source: 'custom', word: customCheck.word };
+  }
   
-  for (const word of curseWords) {
-    const cleanedWord = word.toLowerCase().replace(/[^a-z0-9]/g, '');
-    
-    if (lowerMessage.includes(word.toLowerCase()) || 
-        cleanedMessage.includes(cleanedWord)) {
-      found.push(word);
+  // Check profanity list if enabled
+  if (useProfanityList) {
+    const profanityCheck = checkWordList(message, profanityWords);
+    if (profanityCheck.found) {
+      return { hasProfanity: true, source: 'profanity-list', word: profanityCheck.word };
     }
   }
   
-  return found;
+  return { hasProfanity: false, source: null, word: null };
 }
 
 module.exports = {
-  curseWords,
-  containsCurseWord,
-  findCurseWords
+  customCurseWords,
+  profanityWords,
+  checkProfanity
 };

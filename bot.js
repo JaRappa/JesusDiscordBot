@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
-const { containsCurseWord, findCurseWords } = require('./curseWords');
+const { checkProfanity } = require('./curseWords');
 const { analyzeSentiment, generateJesusResponse } = require('./openaiService');
 const jesusQuotes = require('./JesusQuotes.json');
 
@@ -17,6 +17,7 @@ const client = new Client({
 });
 
 // Configuration
+const USE_PROFANITY_LIST = true; // Toggle: true = use @dsojevic/profanity-list, false = custom list only
 const SENTIMENT_THRESHOLD = 0.6; // Minimum confidence to respond to mean messages
 const COOLDOWN_MS = 30000; // 30 second cooldown per user to avoid spam
 const QUOTE_CHANCE = 1 / 20; // 1 in 20 chance to send a quote
@@ -76,12 +77,12 @@ client.on('messageCreate', async (message) => {
   let triggerType = null;
   
   // Check for curse words first (faster, no API call)
-  if (containsCurseWord(messageContent)) {
+  const profanityResult = checkProfanity(messageContent, USE_PROFANITY_LIST);
+  if (profanityResult.hasProfanity) {
     shouldRespond = true;
     triggerType = 'curse';
     
-    const foundWords = findCurseWords(messageContent);
-    console.log(`[CURSE DETECTED] User: ${username} | Words: ${foundWords.join(', ')}`);
+    console.log(`[CURSE DETECTED] User: ${username} | Word: ${profanityResult.word} | Source: ${profanityResult.source}`);
   } 
   // If no curse words, check sentiment with OpenAI
   else if (messageContent.length > 5) { // Only check messages with some content
