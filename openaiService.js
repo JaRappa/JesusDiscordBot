@@ -4,8 +4,8 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-// The cheapest/lightest model as specified
-const MODEL = 'gpt-5-nano';
+// The cheapest/lightest model - gpt-4.1-nano (gpt-5-nano has issues with empty responses)
+const MODEL = 'gpt-4.1-nano';
 
 /**
  * Analyzes if a message has mean/negative sentiment
@@ -42,8 +42,7 @@ Do NOT flag:
           content: message
         }
       ],
-      max_tokens: 100,
-      temperature: 0.3
+      max_completion_tokens: 100
     });
 
     const content = response.choices[0].message.content.trim();
@@ -102,22 +101,32 @@ Important: Don't quote the offensive message back. Just respond with love and en
             : `Someone named ${username} just said something that seemed unkind or hurtful toward others. Generate a gentle, loving reminder about treating others with kindness.`
         }
       ],
-      max_tokens: 200,
-      temperature: 0.9 // Higher temperature for more varied responses
+      max_completion_tokens: 200
     });
 
-    return response.choices[0].message.content.trim();
+    const content = response.choices[0]?.message?.content?.trim();
+    
+    // If we got a valid response, return it
+    if (content && content.length > 0) {
+      return content;
+    }
+    
+    // Otherwise use fallback
+    throw new Error('Empty response from API');
     
   } catch (error) {
     console.error('OpenAI response generation error:', error.message);
     
-    // Fallback responses if API fails
+    // Fallback responses if API fails or returns empty
     const fallbackResponses = [
       "My child, let us speak with love in our hearts. 🙏",
       "Peace be with you, friend. Remember, kind words heal while harsh ones wound. 💙",
       "Dear friend, I encourage you to let love guide your words. ☮️",
       "Let us treat one another as we wish to be treated. 🕊️",
-      "My child, there is great strength in gentleness and kindness. ✝️"
+      "My child, there is great strength in gentleness and kindness. ✝️",
+      "Blessed are the peacemakers, dear friend. Let kindness guide your tongue. 🕊️",
+      "Remember, love is patient and kind. Let your words reflect that love. 💙",
+      "My child, even in frustration, we can choose words of grace. 🙏"
     ];
     
     return fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
