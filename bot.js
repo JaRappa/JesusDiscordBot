@@ -48,7 +48,7 @@ function getRandomQuote() {
 }
 
 // Bot ready event
-client.once('ready', () => {
+client.once('clientReady', () => {
   console.log('═══════════════════════════════════════════');
   console.log('✝️  Jesus Bot is now online!');
   console.log(`📛 Logged in as: ${client.user.tag}`);
