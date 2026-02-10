@@ -56,7 +56,7 @@ client.once('clientReady', () => {
   console.log('═══════════════════════════════════════════');
   
   // Set bot status
-  client.user.setActivity('over my children 🙏', { type: 3 }); // "Watching over my children"
+  client.user.setActivity('Watching over my children 🙏', { type: 3 }); // "Watching over my children"
 });
 
 // Message event handler
