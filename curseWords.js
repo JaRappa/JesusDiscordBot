@@ -18,10 +18,10 @@ const customCurseWords = [
   // 'anotherword',
 ];
 
-// Function to check a word list against a message
+// Function to check a word list against a message (whole words only)
 function checkWordList(message, wordList) {
   const lowerMessage = message.toLowerCase();
-  const cleanedMessage = lowerMessage.replace(/[^a-z0-9\s]/g, '');
+  const cleanedMessage = lowerMessage.replace(/[^a-z0-9\s]/g, ' ');
   
   for (const word of wordList) {
     // Skip empty words
@@ -31,7 +31,7 @@ function checkWordList(message, wordList) {
     
     // Handle wildcard patterns (e.g., "lo*ng" matches "loooong")
     if (cleanedWord.includes('*')) {
-      const regexPattern = cleanedWord.replace(/\*/g, '+');
+      const regexPattern = '\\b' + cleanedWord.replace(/\*/g, '+') + '\\b';
       try {
         const regex = new RegExp(regexPattern, 'i');
         if (regex.test(cleanedMessage)) {
@@ -41,10 +41,15 @@ function checkWordList(message, wordList) {
         // Invalid regex, skip
       }
     } else {
-      // Check both original and cleaned versions
-      if (lowerMessage.includes(word.toLowerCase()) || 
-          cleanedMessage.includes(cleanedWord)) {
-        return { found: true, word };
+      // Use word boundary regex to match whole words only
+      // This prevents "hello" from matching "hell"
+      try {
+        const regex = new RegExp('\\b' + cleanedWord + '\\b', 'i');
+        if (regex.test(lowerMessage) || regex.test(cleanedMessage)) {
+          return { found: true, word };
+        }
+      } catch (e) {
+        // Invalid regex, skip
       }
     }
   }
